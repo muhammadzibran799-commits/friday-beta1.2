@@ -264,6 +264,7 @@
     const chatBody  = document.getElementById('chatBody');
     const chatInput = document.getElementById('chatInput');
     const sendBtn   = document.getElementById('sendBtn');
+    let history     = [];
 
     // ── kirim dengan Enter ──
     chatInput.addEventListener('keydown', (e) => {
@@ -330,7 +331,7 @@
         const res = await fetch('https://branzz-friday-beta.hf.space/chat', {
           method : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify({ pesan: teks }),
+          body   : JSON.stringify({ pesan: teks, history: history }),
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -338,6 +339,8 @@
         const data = await res.json();
         hapusLoading();
         tambahBubble(data.jawaban, 'ai');
+        history.push({"role": "user", "content": teks});
+        history.push({"role": "assistant", "content": data.jawaban});
 
       } catch (err) {
         hapusLoading();
