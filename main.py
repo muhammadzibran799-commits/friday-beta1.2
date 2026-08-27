@@ -159,9 +159,7 @@ def status():
 def chat(pesan: PesanUser):
     pesan_lengkap = pesan.pesan
     if pesan.file_path:
-        pesan_lengkap += f"\n\n[File PDF tersedia di: {pesan.file_path}]"
-        # kasih tahu model lokasi file lewat pesan user
-        # model akan baca ini dan memutuskan pakai tool ekstrak_teks_pdf atau tidak
+        pesan_lengkap += f"\n\n[INSTRUKSI: User telah mengupload file PDF. Gunakan tool ekstrak_teks_pdf dengan file_path '{pesan.file_path}' untuk membaca isinya sebelum menjawab pertanyaan user.]"
     tanya = tanya_ai(pesan_lengkap, pesan.history)
     return {'jawaban': tanya}
 
