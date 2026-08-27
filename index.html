@@ -192,6 +192,7 @@
     const sendBtn   = document.getElementById('sendBtn');
     let history     = [];
     let filePath    = null;
+    let isUploading = false;
  
     chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); kirimPesan(); }
@@ -237,6 +238,9 @@
     }
     
     async function uploadPDF(input) {
+      if (isUploading) return;
+      isUploading   = true;
+      
       const file = input.files[0];
       if (!file) return;
 
@@ -249,7 +253,6 @@
         const res = await fetch('https://branzz-friday-beta.hf.space/upload-pdf', {
           method: 'POST',
           body: formData
-          // jangan tambah Content-Type — browser set otomatis untuk FormData
         });
 
         const data = await res.json();
@@ -260,10 +263,10 @@
           filePath = data.file_path;
           input.value="";
           tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
-
-        tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
-      } catch (err) {
-        tambahBubble('Gagal upload PDF.', 'ai');
+             } catch (err) {
+          tambahBubble('Gagal upload PDF.', 'ai');
+      }   finally{
+        isUploading = false
       }
     }
 
