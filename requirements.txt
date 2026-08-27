@@ -1,12 +1,6 @@
-<<<<<<< HEAD
 fastapi
 uvicorn
 groq
 python-dotenv
-duckduckgo-search
-=======
-fastapi
-uvicorn
-groq
-python-dotenv
->>>>>>> 7081291635b3252578d9c43935bf92137791cbe1
+ddgs
+pdfplumber
