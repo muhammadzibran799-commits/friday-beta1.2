@@ -253,7 +253,12 @@
         });
 
         const data = await res.json();
-        filePath = data.file_path;
+          if (!res.ok) {
+          tambahBubble('Gagal upload PDF. Coba lagi.', 'ai');
+          return;
+          }
+          filePath = data.file_path;
+          tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
 
         tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
       } catch (err) {

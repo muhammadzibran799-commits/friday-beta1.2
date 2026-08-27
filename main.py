@@ -165,7 +165,7 @@ def chat(pesan: PesanUser):
 
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile=File(...)):
-    temp_path = f"/temp/{uuid.uuid4()}_{file.filename}"
+    temp_path = f"/tmp/{uuid.uuid4()}_{file.filename}"
     
     with open(temp_path,"wb") as f:
         shutil.copyfileobj(file.file,f)
