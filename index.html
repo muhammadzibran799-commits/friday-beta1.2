@@ -168,6 +168,13 @@
     <div class="chat-body" id="chatBody"></div>
  
     <div class="chat-footer">
+      <input type="file" id="fileInput" accept=".pdf" style="display:none"
+         onchange="uploadPDF(this)"/>
+      <button onclick="document.getElementById('fileInput').click()"
+              style="background:#f0f0f0; border:none; border-radius:50%; 
+                    width:46px; height:46px; cursor:pointer; font-size:18px;">
+        📎
+      </button>
       <div class="input-wrapper">
         <input type="text" class="chat-input" id="chatInput" placeholder="Ketik pesan..." autocomplete="off"/>
         <button class="send-btn" id="sendBtn" onclick="kirimPesan()">
@@ -184,6 +191,7 @@
     const chatInput = document.getElementById('chatInput');
     const sendBtn   = document.getElementById('sendBtn');
     let history     = [];
+    let filePath    = null;
  
     chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); kirimPesan(); }
@@ -227,7 +235,32 @@
     function scrollBawah() {
       chatBody.scrollTop = chatBody.scrollHeight;
     }
- 
+    
+    async function uploadPDF(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      tambahBubble(`📎 Mengupload ${file.name}...`, 'ai');
+
+      try {
+        const res = await fetch('https://branzz-friday-beta.hf.space/upload-pdf', {
+          method: 'POST',
+          body: formData
+          // jangan tambah Content-Type — browser set otomatis untuk FormData
+        });
+
+        const data = await res.json();
+        filePath = data.file_path;
+
+        tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
+      } catch (err) {
+        tambahBubble('Gagal upload PDF.', 'ai');
+      }
+    }
+
     async function kirimPesan() {
       const teks = chatInput.value.trim();
       if (!teks) return;
@@ -241,7 +274,7 @@
         const res = await fetch('https://branzz-friday-beta.hf.space/chat', {
           method : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify({ pesan: teks, history: history }),
+          body   : JSON.stringify({ pesan: teks, history: history, file_path: filePath }),
         });
  
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
