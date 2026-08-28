@@ -190,6 +190,10 @@
     const chatBody  = document.getElementById('chatBody');
     const chatInput = document.getElementById('chatInput');
     const sendBtn   = document.getElementById('sendBtn');
+    const MAX_HISTORY = 20; // Maksimal 10 pasang user-assistant
+    const API_BASE  = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                      ? `http://${window.location.host}`
+                      : 'https://branzz-friday-beta.hf.space';
     let history     = [];
     let filePath    = null;
     let isUploading = false;
@@ -250,23 +254,23 @@
       tambahBubble(`📎 Mengupload ${file.name}...`, 'ai');
 
       try {
-        const res = await fetch('https://branzz-friday-beta.hf.space/upload-pdf', {
+        const res = await fetch(`${API_BASE}/upload-pdf`, {
           method: 'POST',
           body: formData
         });
 
         const data = await res.json();
-          if (!res.ok) {
+        if (!res.ok) {
           tambahBubble('Gagal upload PDF. Coba lagi.', 'ai');
           return;
-          }
-          filePath = data.file_path;
-          input.value="";
-          tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
-             } catch (err) {
-          tambahBubble('Gagal upload PDF.', 'ai');
-      }   finally{
-        isUploading = false
+        }
+        filePath = data.file_path;
+        input.value = "";
+        tambahBubble(`✅ ${file.name} berhasil diupload. Sekarang tanya apapun tentang dokumen ini.`, 'ai');
+      } catch (err) {
+        tambahBubble('Gagal upload PDF.', 'ai');
+      } finally {
+        isUploading = false;
       }
     }
 
@@ -280,7 +284,7 @@
       tampilLoading();
  
       try {
-        const res = await fetch('https://branzz-friday-beta.hf.space/chat', {
+        const res = await fetch(`${API_BASE}/chat`, {
           method : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body   : JSON.stringify({ pesan: teks, history: history, file_path: filePath }),
@@ -293,7 +297,16 @@
         tambahBubble(data.jawaban, 'ai');
         history.push({"role": "user", "content": teks});
         history.push({"role": "assistant", "content": data.jawaban});
- 
+
+        // Batasi history agar tidak melebihi token limit model
+        if (history.length > MAX_HISTORY) {
+          history = history.slice(-MAX_HISTORY);
+        }
+
+        // Reset filePath setelah digunakan agar tidak dikirim terus-menerus
+        if (filePath) {
+          filePath = null;
+        } 
       } catch (err) {
         hapusLoading();
         tambahBubble('Koneksi ke Friday gagal. Pastikan server berjalan.', 'ai');

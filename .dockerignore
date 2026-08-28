@@ -1,0 +1,7 @@
+.env
+trial.venv/
+__pycache__/
+.git/
+.vscode/
+*.ipynb
+

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import uuid
 import shutil
+import os
+import tempfile
 import pdfplumber
 from ddgs import DDGS
 
@@ -14,7 +16,7 @@ client = Groq()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # TODO: Ganti dengan domain frontend spesifik untuk produksi
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,12 +37,12 @@ def cari_web(query:str)->str:
         
     return output  
 
-def ekstrak_teks_pdf(file_path:str)->str:
+def ekstrak_teks_pdf(file_path: str) -> str:
     try:
-        with pdfplumber.open(file_path) as pdf :
-            teks=""
+        with pdfplumber.open(file_path) as pdf:
+            teks = ""
             for halaman in pdf.pages:
-                teks +=halaman.extract_text() or ""
+                teks += halaman.extract_text() or ""
                 
         if not teks.strip():
             return "Tidak ada teks yang dapat diekstrak"
@@ -115,18 +117,16 @@ def tanya_ai(pesan, history):
         message = response.choices[0].message
 
         if message.tool_calls:
-            tool_call = message.tool_calls[0]
-            tool_name = tool_call.function.name
-            tool_args = json.loads(tool_call.function.arguments)
-            hasil = execute_tool(tool_name, tool_args)
-            
-
             percakapan_sementara.append(message)
-            percakapan_sementara.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": hasil
-            })
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+                hasil = execute_tool(tool_name, tool_args)
+                percakapan_sementara.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": hasil
+                })
 
             response2 = client.chat.completions.create(
                 model="openai/gpt-oss-120b",
@@ -164,18 +164,31 @@ def chat(pesan: PesanUser):
     return {'jawaban': tanya}
 
 @app.post("/upload-pdf")
-async def upload_pdf(file: UploadFile=File(...)):
-    temp_path = f"/tmp/{uuid.uuid4()}_{file.filename}"
-    
-    with open(temp_path,"wb") as f:
-        shutil.copyfileobj(file.file,f)
-    
-    return {"file_path":temp_path}
-    
-    
+async def upload_pdf(file: UploadFile = File(...)):
+    # Validasi tipe file
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Hanya file PDF yang diizinkan")
+
+    # Gunakan tempfile agar cross-platform (Windows & Linux)
+    temp_dir = tempfile.mkdtemp()
+    temp_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file.filename}")
+
+    with open(temp_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    return {"file_path": temp_path}
 
 
-
-    
-    
-
+@app.delete("/cleanup")
+def cleanup(file_path: str):
+    """Hapus file PDF yang sudah tidak dibutuhkan."""
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            # Hapus juga direktori temp jika kosong
+            temp_dir = os.path.dirname(file_path)
+            if not os.listdir(temp_dir):
+                os.rmdir(temp_dir)
+        return {"status": "deleted"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
